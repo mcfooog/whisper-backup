@@ -1,0 +1,24 @@
+#!/bin/sh
+# Block pushing any file larger than 99MB to GitHub
+find_too_big() {
+  # $1 = ref name, $2 = sha (new)
+  :
+}
+max_bytes=$((99 * 1024 * 1024))
+oldrev="$2"
+if [ "$oldrev" = "0000000000000000000000000000000000000000" ]; then
+  range="$1"
+else
+  range="$oldrev..$1"
+fi
+for f in $(git diff-tree --no-commit-id --name-only -r $range 2>/dev/null); do
+  # get size of blob at ref
+  git ls-tree -r $1 -- "$f" | while read mode type sha path; do
+    size=$(git cat-file -s "$sha" 2>/dev/null || echo 0)
+    if [ "$size" -gt "$max_bytes" ]; then
+      echo "ERROR: file '$path' is $((size/1024/1024))MB, over the 99MB GitHub limit. Refusing to push."
+      exit 1
+    fi
+  done
+done
+exit 0
